@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interactive tool email test</title>
+  <style>
+    body { font: 18px/1.5 system-ui, sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; }
+    label, select, button { display: block; margin-block: .7rem; font: inherit; }
+    select, button { min-height: 48px; max-width: 100%; }
+    :focus-visible { outline: 3px solid #075acb; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Find your first interactive tool</h1>
+    <p>This is a fictional test. When you choose to send it, your answer and the result shown here go to the form service and then to the creator's inbox.</p>
+    <form id="test-form">
+      <label for="goal">What do you want to help your reader do?</label>
+      <select id="goal" name="reader_goal" required>
+        <option value="">Choose a goal</option>
+        <option value="choose">Choose between options</option>
+        <option value="calculate">Calculate an estimate</option>
+      </select>
+      <button type="button" id="show">Show my result</button>
+      <p id="result" aria-live="polite"></p>
+      <button type="submit" id="send" disabled>Send this answer and result</button>
+      <p id="status" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+  <script>
+    const endpoint = 'FORM_ENDPOINT_GOES_HERE';
+    const form = document.querySelector('#test-form');
+    const goal = document.querySelector('#goal');
+    const result = document.querySelector('#result');
+    const send = document.querySelector('#send');
+    const status = document.querySelector('#status');
+    goal.addEventListener('change', () => { result.textContent = ''; status.textContent = ''; send.disabled = true; });
+    document.querySelector('#show').addEventListener('click', () => {
+      if (!goal.reportValidity()) return;
+      result.textContent = goal.value === 'choose' ? 'Try a quiz.' : 'Try a calculator.';
+      send.disabled = false;
+      status.textContent = '';
+    });
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!form.reportValidity() || !result.textContent) return;
+      const data = new FormData(form);
+      data.set('displayed_result', result.textContent);
+      send.disabled = true;
+      status.textContent = 'Sending your answer and result...';
+      try {
+        const response = await fetch(endpoint, { method: 'POST', body: data, headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error('Submission failed');
+        status.textContent = 'Sent! Your answer and result were submitted.';
+      } catch (_) {
+        status.textContent = 'That didn’t send. Please try again.';
+      } finally { send.disabled = false; }
+    });
+  </script>
+</body>
+</html>
