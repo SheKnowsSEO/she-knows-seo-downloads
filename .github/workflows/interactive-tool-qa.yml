@@ -46,3 +46,15 @@ jobs:
           test "$bad" = 400
           docker exec sks-wp php -l /var/www/html/wp-content/plugins/sks-bridge/interactive-tool-bridge.php
           node interactive-tool-builder/qa/zapier-bridge/test-quiz.cjs
+      - name: Optional live Zapier test
+        env:
+          ZAPIER_QA_WEBHOOK: ${{ secrets.SKS_QA_ZAPIER_WEBHOOK }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$ZAPIER_QA_WEBHOOK" ]; then
+            echo 'Live Zapier test skipped: test webhook secret is not configured.'
+            exit 0
+          fi
+          docker run --rm --network sks-qa --volumes-from sks-wp -e WORDPRESS_DB_HOST=sks-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=qa_password -e WORDPRESS_DB_NAME=wordpress -e ZAPIER_QA_WEBHOOK wordpress:cli --allow-root eval 'update_option("sks_interactive_tool_bridge_settings", ["webhook" => getenv("ZAPIER_QA_WEBHOOK"), "enabled" => true]);'
+          SKS_QA_ENDPOINT='http://127.0.0.1:8088/?rest_route=/sks-interactive/v1/submit' node interactive-tool-builder/qa/zapier-bridge/test-live-connection.cjs
