@@ -1,0 +1,53 @@
+<!-- QA example only. Replace YOUR_WORDPRESS_SITE with your own site URL. -->
+<section id="sks-quiz-qa" aria-labelledby="sks-qa-title">
+  <h2 id="sks-qa-title">Find your first interactive tool</h2>
+  <p>This fictional example can send your choice and result to the site owner after you choose Send.</p>
+  <label for="sks-qa-goal">What do you want to help your reader do?</label>
+  <select id="sks-qa-goal" required>
+    <option value="">Choose an option</option>
+    <option value="Choose between options">Choose between options</option>
+    <option value="Calculate an estimate">Calculate an estimate</option>
+  </select>
+  <button id="sks-qa-show" type="button">Show my result</button>
+  <p id="sks-qa-result" role="status" aria-live="polite"></p>
+  <button id="sks-qa-send" type="button" disabled>Send my choice and result</button>
+  <p id="sks-qa-status" role="status" aria-live="polite"></p>
+  <label class="sks-qa-trap" aria-hidden="true">Leave this blank <input id="sks-qa-website" tabindex="-1" autocomplete="off"></label>
+</section>
+<style>
+  #sks-quiz-qa {font: 18px/1.5 system-ui,sans-serif;max-width:42rem;padding:1rem;border:1px solid #777}
+  #sks-quiz-qa label, #sks-quiz-qa select, #sks-quiz-qa button {display:block;margin:.7rem 0;font:inherit;max-width:100%}
+  #sks-quiz-qa select, #sks-quiz-qa button {min-height:48px}
+  #sks-quiz-qa :focus-visible {outline:3px solid #075acb;outline-offset:3px}
+  #sks-quiz-qa .sks-qa-trap {position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+</style>
+<script>
+(() => {
+  const root = document.getElementById('sks-quiz-qa');
+  const goal = root.querySelector('#sks-qa-goal');
+  const result = root.querySelector('#sks-qa-result');
+  const status = root.querySelector('#sks-qa-status');
+  const show = root.querySelector('#sks-qa-show');
+  const send = root.querySelector('#sks-qa-send');
+  const endpoint = 'https://YOUR_WORDPRESS_SITE/wp-json/sks-interactive/v1/submit';
+  goal.addEventListener('change', () => { result.textContent = ''; status.textContent = ''; send.disabled = true; });
+  show.addEventListener('click', () => {
+    if (!goal.reportValidity()) return;
+    result.textContent = goal.value === 'Choose between options' ? 'Try a quiz.' : 'Try a calculator.';
+    status.textContent = '';
+    send.disabled = false;
+  });
+  send.addEventListener('click', async () => {
+    if (!goal.value || !result.textContent) return;
+    const payload = {tool_name:'Starter quiz', answers:{reader_goal:goal.value}, displayed_result:result.textContent, send_confirmed:true, website:root.querySelector('#sks-qa-website').value};
+    send.disabled = true; show.disabled = true; goal.disabled = true;
+    status.textContent = 'Sending your choice and result...';
+    try {
+      const response = await fetch(endpoint, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if (!response.ok) throw new Error('The connection rejected the submission');
+      status.textContent = 'Your choice and result were sent to the connection.';
+    } catch (_) { status.textContent = 'That did not send. Please try again.'; }
+    finally { goal.disabled = false; show.disabled = false; send.disabled = false; }
+  });
+})();
+</script>
