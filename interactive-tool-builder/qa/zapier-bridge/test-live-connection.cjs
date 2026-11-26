@@ -12,7 +12,7 @@ for (const name of ['goal','result','status','show','send','website']) {
 const root={querySelector(s){return fields[s.replace('#sks-qa-','')];}};
 vm.runInNewContext(script,{document:{getElementById(){return root;}},fetch});
 (async () => {
- for (const [answer, expected] of [['Choose between options','Try a quiz.'],['Calculate an estimate','Try a calculator.']]) {
+ for (const [answer, expected] of [['Calculate an estimate','Try a calculator.'],['Choose between options','Try a quiz.']]) {
   fields.goal.value=answer; fields.goal.events.change(); fields.show.events.click();
   assert.equal(fields.result.textContent,expected);
   await fields.send.events.click();
