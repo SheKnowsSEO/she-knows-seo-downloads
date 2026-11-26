@@ -11,3 +11,5 @@ The ZIP contains only the plugin source. The demo HTML is separate and its place
 Verification performed: PHP 8.2 syntax check; PHP stub tests for URL allowlist, payload, disabled state, validation, request size, honeypot, upstream errors and basic rate limiting; JavaScript harness tests for two results, stale result clearing, payload mapping and retry after failure. This is not evidence of WordPress installation, actual network delivery, accessibility conformance or cross platform support.
 
 The owner authorised a temporary encrypted secret for a test run with fictional submissions.
+
+The automation delivery check is also being run with a temporary test Zap.
