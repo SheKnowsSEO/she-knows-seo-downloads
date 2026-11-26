@@ -1,8 +1,8 @@
 <?php
 /**
- * Plugin Name: Interactive Tool Zapier Bridge (QA)
- * Description: Test candidate for forwarding interactive tool results to a private Zapier webhook.
- * Version: 0.0.1
+ * Plugin Name: Interactive Tool Zapier Connection
+ * Description: Forward interactive tool answers and results to a private Zapier webhook.
+ * Version: 0.1.0
  * Requires PHP: 7.4
  * License: GPL-2.0-or-later
  */
