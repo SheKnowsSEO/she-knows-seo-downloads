@@ -1,0 +1,48 @@
+name: Interactive tool WordPress QA
+on:
+  push:
+    branches: [qa/interactive-tool-builder-0-1-5]
+    paths:
+      - 'interactive-tool-builder/qa/zapier-bridge/**'
+      - '.github/workflows/interactive-tool-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  wordpress-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run isolated WordPress checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create sks-qa
+          docker run -d --name sks-db --network sks-qa -e MYSQL_ROOT_PASSWORD=qa_root -e MYSQL_DATABASE=wordpress -e MYSQL_USER=wordpress -e MYSQL_PASSWORD=qa_password mysql:8.0
+          docker run -d --name sks-wp --network sks-qa -p 127.0.0.1:8088:80 -e WORDPRESS_DB_HOST=sks-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=qa_password -e WORDPRESS_DB_NAME=wordpress wordpress:php8.2-apache
+          for i in $(seq 1 60); do if docker exec sks-db mysqladmin ping -h localhost -uroot -pqa_root --silent >/dev/null 2>&1; then break; fi; sleep 2; done
+          docker exec sks-db mysqladmin ping -h localhost -uroot -pqa_root --silent
+          for i in $(seq 1 60); do if curl -s http://127.0.0.1:8088/ >/dev/null; then break; fi; sleep 2; done
+          docker exec sks-wp mkdir -p /var/www/html/wp-content/plugins/sks-bridge /var/www/html/wp-content/mu-plugins
+          docker cp interactive-tool-builder/qa/zapier-bridge/interactive-tool-bridge.php sks-wp:/var/www/html/wp-content/plugins/sks-bridge/interactive-tool-bridge.php
+          docker exec sks-wp sh -c 'cat > /var/www/html/wp-content/mu-plugins/sks-qa.php <<'"'"'PHP'"'"'
+          <?php
+          add_filter("pre_http_request", function ($pre, $args, $url) {
+              if ($url !== "https://hooks.zapier.com/hooks/catch/123456/abcdef/") return $pre;
+              file_put_contents("/tmp/sks-captured.json", $args["body"]);
+              return ["headers" => [], "body" => "{}", "response" => ["code" => 200, "message" => "OK"], "cookies" => [], "filename" => null];
+          }, 10, 3);
+          PHP'
+          wp() { docker run --rm --network sks-qa --volumes-from sks-wp -e WORDPRESS_DB_HOST=sks-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=qa_password -e WORDPRESS_DB_NAME=wordpress wordpress:cli --allow-root "$@"; }
+          wp core install --url=http://127.0.0.1:8088 --title='Interactive tool QA' --admin_user=qa --admin_password=temporary_qa_password --admin_email=qa@example.test --skip-email
+          wp plugin activate sks-bridge
+          wp option update sks_interactive_tool_bridge_settings '{"webhook":"https://hooks.zapier.com/hooks/catch/123456/abcdef/","enabled":true}' --format=json
+          response=$(curl -sS -w '\n%{http_code}' 'http://127.0.0.1:8088/?rest_route=/sks-interactive/v1/submit' -H 'Content-Type: application/json' -d '{"tool_name":"Starter quiz","displayed_result":"Try a quiz.","answers":{"reader_goal":"Choose between options"},"send_confirmed":true,"website":""}')
+          printf '%s\n' "$response"
+          test "$(printf '%s\n' "$response" | tail -1)" = 200
+          docker exec sks-wp cat /tmp/sks-captured.json | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["displayed_result"] == "Try a quiz." and d["answers"]["reader_goal"] == "Choose between options"'
+          bad=$(curl -sS -o /dev/null -w '%{http_code}' 'http://127.0.0.1:8088/?rest_route=/sks-interactive/v1/submit' -H 'Content-Type: application/json' -d '{"tool_name":"Starter quiz","displayed_result":"","answers":{},"send_confirmed":true}')
+          test "$bad" = 400
+          docker exec sks-wp php -l /var/www/html/wp-content/plugins/sks-bridge/interactive-tool-bridge.php
+          node interactive-tool-builder/qa/zapier-bridge/test-quiz.cjs
