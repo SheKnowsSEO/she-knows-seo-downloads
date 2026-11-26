@@ -35,7 +35,7 @@ jobs:
               return ["headers" => [], "body" => "{}", "response" => ["code" => 200, "message" => "OK"], "cookies" => [], "filename" => null];
           }, 10, 3);
           PHP'
-          wp() { docker run --rm --network sks-qa --volumes-from sks-wp -e WORDPRESS_DB_HOST=sks-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=qa_password -e WORDPRESS_DB_NAME=wordpress wordpress:cli --allow-root "$@"; }
+          wp() { docker run --rm --user 0:0 --network sks-qa --volumes-from sks-wp -e WORDPRESS_DB_HOST=sks-db:3306 -e WORDPRESS_DB_USER=wordpress -e WORDPRESS_DB_PASSWORD=qa_password -e WORDPRESS_DB_NAME=wordpress wordpress:cli --allow-root "$@"; }
           wp core install --url=http://127.0.0.1:8088 --title='Interactive tool QA' --admin_user=qa --admin_password=temporary_qa_password --admin_email=qa@example.test --skip-email
           wp plugin install /var/www/html/sks-bridge-qa.zip --activate
           wp option update sks_interactive_tool_bridge_settings '{"webhook":"https://hooks.zapier.com/hooks/catch/123456/abcdef/","enabled":true}' --format=json
